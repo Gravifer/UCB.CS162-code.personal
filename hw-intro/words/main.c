@@ -37,6 +37,7 @@ WordCount *word_counts = NULL;
 
 /* The maximum length of each word in a file */
 #define MAX_WORD_LEN 64
+bool FLAG_IGNORE_MONOGRAM = true;
 
 /*
  * 3.1.1 Total Word Count
@@ -45,7 +46,28 @@ WordCount *word_counts = NULL;
  * Useful functions: fgetc(), isalpha().
  */
 int num_words(FILE* infile) {
+  // when FLAG_IGNORE_MONOGRAM, ignore words of length 1
   int num_words = 0;
+  int in_word = -1; // -1 not in a word, encountered length when in a word
+  char c = (char)fgetc(infile);
+  while (c != EOF) {
+    if (isalpha(c)) {
+      if (in_word == -1) {
+        in_word = 1; // start of a new word
+      } else {
+        in_word++; // continue the word
+      }
+    } else { // non-alphabetic character
+      if (in_word != -1) {
+        // we were in a word, now it ends
+        if (!(FLAG_IGNORE_MONOGRAM && in_word == 1)) {
+          num_words++;
+        }
+        in_word = -1; // reset for next word
+      }
+    }
+    c = (char)fgetc(infile);
+  }
 
   return num_words;
 }
@@ -94,7 +116,7 @@ int main (int argc, char *argv[]) {
   // Freq Mode: outputs the frequency of each word
   bool freq_mode = false;
 
-  FILE *infile = NULL;
+  FILE *infile = NULL; // LINK words/main.c#do-files
 
   // Variables for command line argument parsing
   int i;
@@ -133,10 +155,38 @@ int main (int argc, char *argv[]) {
   if ((argc - optind) < 1) {
     // No input file specified, instead, read from STDIN instead.
     infile = stdin;
-  } else {
+    if (count_mode) {
+      total_words += num_words(infile);
+    } else {
+      if (count_words(&word_counts, infile)) {
+        fprintf(stderr, "Error counting words in file %s\n", "STDIN");
+        fclose(infile);
+        return 1;
+      }
+    }
+  } else { // ANCHOR do-files
     // At least one file specified. Useful functions: fopen(), fclose().
     // The first file can be found at argv[optind]. The last file can be
     // found at argv[argc-1].
+    for (int argi = optind; argi < argc; argi++) {
+      infile = fopen(argv[argi], "r");
+      if (infile == NULL) {
+        fprintf(stderr, "Could not open file %s\n", argv[argi]);
+        return 1;
+      }
+
+      if (count_mode) {
+        total_words += num_words(infile);
+      } else {
+        if (count_words(&word_counts, infile)) {
+          fprintf(stderr, "Error counting words in file %s\n", argv[argi]);
+          fclose(infile);
+          return 1;
+        }
+      }
+
+      fclose(infile);
+    }
   }
 
   if (count_mode) {
