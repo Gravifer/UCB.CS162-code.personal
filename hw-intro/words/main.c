@@ -84,7 +84,51 @@ int num_words(FILE* infile) {
  * and 0 otherwise.
  */
 int count_words(WordCount **wclist, FILE *infile) {
+  if (wclist == NULL || infile == NULL) {
+    dbg("Error: wclist or infile is NULL");
+    return 1;
+  }
+  dbg("Counting words in file (fd at %p)", infile);
+  char buffer[MAX_WORD_LEN + 1];
+  int fget_word(FILE *infile, char* buffer, size_t bufsize);
+  while (fget_word(infile, buffer, sizeof(buffer)) == 0) {
+    if (FLAG_IGNORE_MONOGRAM && strlen(buffer) == 1) {
+      dbg("Ignoring monogram word \"%s\"", buffer);
+      continue;
+    }
+    if (add_word(wclist, buffer) != 0) {
+      dbg("Error adding word \"%s\" to word count list", buffer);
+      return 1;
+    }
+  }
   return 0;
+}
+int fget_word(FILE *infile, char *buffer, size_t bufsize) {
+  if (infile == NULL || buffer == NULL || bufsize == 0) {
+    dbg("Error: infile or buffer is NULL, or bufsize is 0");
+    return 1;
+  }
+  dbg("Getting next word from file (fd at %p)", infile);
+  size_t idx = 0;
+  char c = (char)fgetc(infile);
+  // Skip non-alphabetic characters
+  while (c != EOF && !isalpha(c)) {
+    c = (char)fgetc(infile);
+  }
+  // Read alphabetic characters into buffer
+  while (c != EOF && isalpha(c) && idx < bufsize - 1) {
+    buffer[idx++] = (char)tolower(c);
+    c = (char)fgetc(infile);
+  }
+  buffer[idx] = '\0'; // Null-terminate the string
+  // If we read at least one character, return success
+  if (idx > 0) {
+    dbg("Found word: \"%s\"", buffer);
+    return 0;
+  } else {
+    dbg("No more words found in file (fd at %p)", infile);
+    return 1; // No word found
+  }
 }
 
 /*
@@ -92,7 +136,10 @@ int count_words(WordCount **wclist, FILE *infile) {
  * Useful function: strcmp().
  */
 static bool wordcount_less(const WordCount *wc1, const WordCount *wc2) {
-  return 0;
+  if (wc1->count == wc2->count) {
+    return strcmp(wc1->word, wc2->word) < 0;
+  }
+  return wc1->count < wc2->count;
 }
 
 // In trying times, displays a helpful message.
@@ -108,7 +155,7 @@ static int display_help(void) {
  * Handle command line flags and arguments.
  */
 int main (int argc, char *argv[]) {
-
+  dbg("Starting word count program");
   // Count Mode (default): outputs the total amount of words counted
   bool count_mode = true;
   int total_words = 0;
@@ -150,20 +197,26 @@ int main (int argc, char *argv[]) {
   }
 
   /* Create the empty data structure */
-  init_words(&word_counts);
+  i = init_words(&word_counts);
+  if (i != 0) { // || word_counts == NULL) {
+    fprintf(stderr, "Error initializing word count list\n");
+    return 1;
+  }
 
   if ((argc - optind) < 1) {
     // No input file specified, instead, read from STDIN instead.
-    infile = stdin;
-    if (count_mode) {
-      total_words += num_words(infile);
-    } else {
-      if (count_words(&word_counts, infile)) {
-        fprintf(stderr, "Error counting words in file %s\n", "STDIN");
-        fclose(infile);
-        return 1;
+      infile = stdin;
+      if (count_mode) {
+        dbg("Counting words from %s", "STDIN");
+        total_words += num_words(infile);
+      } else {
+        dbg("Collecting word freqs from STDIN");
+        if (count_words(&word_counts, infile)) {
+          fprintf(stderr, "Error counting words in file %s\n", "STDIN");
+          fclose(infile);
+          return 1;
+        }
       }
-    }
   } else { // ANCHOR do-files
     // At least one file specified. Useful functions: fopen(), fclose().
     // The first file can be found at argv[optind]. The last file can be
@@ -176,8 +229,10 @@ int main (int argc, char *argv[]) {
       }
 
       if (count_mode) {
+        dbg("Counting words from %s", argv[argi]);
         total_words += num_words(infile);
       } else {
+        dbg("Collecting word freqs from %s", argv[argi]);
         if (count_words(&word_counts, infile)) {
           fprintf(stderr, "Error counting words in file %s\n", argv[argi]);
           fclose(infile);

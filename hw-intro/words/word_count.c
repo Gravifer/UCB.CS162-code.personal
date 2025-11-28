@@ -37,7 +37,15 @@ int init_words(WordCount **wclist) {
      Returns 0 if no errors are encountered
      in the body of this function; 1 otherwise.
   */
-  *wclist = NULL;
+  dbg("Initializing word count list");
+  WordCount* wchead = NULL; // (WordCount*) malloc(sizeof(WordCount));
+  // if (wchead == NULL) {
+  //   return 1;
+  // }
+  // wchead->word = (char *) wchead; // sentinel
+  // wchead->count = 0; // count total of all words
+  // wchead->next = NULL;
+  *wclist = wchead;
   return 0;
 }
 
@@ -46,13 +54,26 @@ ssize_t len_words(WordCount *wchead) {
      encountered in the body of
      this function.
   */
-    size_t len = 0;
-    return len;
+  size_t len = -1;
+  WordCount *wc;
+  for (wc = wchead; wc; wc = wc->next) {
+    len++;
+  }
+  return len;
 }
 
 WordCount *find_word(WordCount *wchead, char *word) {
   /* Return count for word, if it exists */
-  WordCount *wc = NULL;
+  dbg("Finding word \"%s\" in word count list", word);
+  WordCount *wc = wchead;
+  while (wc != NULL) {
+    if (strcmp(wc->word, word) == 0) {
+      dbg("Word \"%s\" found in list with count %i", word, wc->count);
+      return wc;
+    }
+    wc = wc->next;
+  }
+  dbg("Word \"%s\" not found in list", word);
   return wc;
 }
 
@@ -61,7 +82,27 @@ int add_word(WordCount **wclist, char *word) {
      Otherwise insert with count 1.
      Returns 0 if no errors are encountered in the body of this function; 1 otherwise.
   */
- return 0;
+  dbg("Adding word \"%s\" to word count list", word);
+  WordCount *wc = find_word(*wclist, word);
+  if (wc != NULL) {
+    dbg("Word \"%s\" found in list (count = %i); incrementing count", word, wc->count);
+    wc->count++;
+  } else {
+    dbg("Word \"%s\" not found in list; inserting with count = 1", word);
+    WordCount *new_wc = (WordCount *) malloc(sizeof(WordCount));
+    if (new_wc == NULL) {
+      return 1;
+    }
+    new_wc->word = new_string(word);
+    if (new_wc->word == NULL) {
+      free(new_wc);
+      return 1;
+    }
+    new_wc->count = 1;
+    new_wc->next = *wclist;
+    *wclist = new_wc;
+  }
+  return 0;
 }
 
 void fprint_words(WordCount *wchead, FILE *ofile) {

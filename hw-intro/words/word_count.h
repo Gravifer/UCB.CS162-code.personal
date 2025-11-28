@@ -35,6 +35,11 @@ Mutators take a reference to a list as first arg.
 #include <string.h>
 #include <stdlib.h>
 
+# ifndef __ssize_t_defined
+typedef __ssize_t ssize_t;
+# define __ssize_t_defined
+# endif
+
 /* Representation of a word count object.
    Includes next field for constructing singly linked list*/
 struct word_count {
@@ -69,6 +74,13 @@ void wordcount_insert_ordered(WordCount **wclist, WordCount *elem, bool less(con
 /* Sort a word count list in place */
 void wordcount_sort(WordCount **wclist, bool less(const WordCount *, const WordCount *));
 
+#ifndef GRAVIFER_DBGMSG
+#undef GRAVIFER_DBGMSG
+#ifdef GRAVIFER_DBGMSG
+#define dbg(msg, ...) fprintf(stderr, "[%s:%d] " msg "\n", __FILE__, __LINE__, ##__VA_ARGS__)
+#else /* GRAVIFER_DBGMSG */
+#define dbg(msg, ...)
+#endif /* GRAVIFER_DBGMSG */
+#endif /* GRAVIFER_DBGMSG */
+
 #endif /* word_count_h */
-
-
