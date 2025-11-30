@@ -66,6 +66,14 @@ word_count_t* find_word(word_count_list_t* wclist, char* word) {
 
 word_count_t* add_word(word_count_list_t* wclist, char* word) {
   /* DONE */
+
+  // Allocate new object before locking
+  word_count_t* new_wc = malloc(sizeof(word_count_t));
+  if (!new_wc) return NULL;
+  new_wc->word = strdup(word);
+  if (!new_wc->word) { free(new_wc); return NULL; }
+  new_wc->count = 1;
+
   // ? can we use find_word to check if the word already exists
   pthread_mutex_lock(&wclist->lock);
   for (struct list_elem* e = list_begin(&wclist->lst);
@@ -74,10 +82,14 @@ word_count_t* add_word(word_count_list_t* wclist, char* word) {
     if (strcmp(wc->word, word) == 0) {
       wc->count++;
       pthread_mutex_unlock(&wclist->lock);
+      // remeber to free the allocated new_wc since we didn't use it
+      free(new_wc->word);
+      free(new_wc);
       return wc;
     }
   }
   // if not found, create a new word_count_t
+  /* // move out of lock as this can be the bottleneck
   word_count_t* new_wc = malloc(sizeof(word_count_t));
   if (new_wc == NULL) {
     pthread_mutex_unlock(&wclist->lock);
@@ -91,6 +103,7 @@ word_count_t* add_word(word_count_list_t* wclist, char* word) {
   }
   strcpy(new_wc->word, word);
   new_wc->count = 1;
+  */
   list_push_back(&wclist->lst, &new_wc->elem);
   pthread_mutex_unlock(&wclist->lock);
   return new_wc;
