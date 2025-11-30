@@ -49,18 +49,18 @@ size_t len_words(word_count_list_t* wclist) {
 
 word_count_t* find_word(word_count_list_t* wclist, char* word) {
   /* DONE */
-  // ? do we need to lock here?
-  // lets first lock it, and optimise later if needed
-  pthread_mutex_lock(&wclist->lock);
+  // // ? do we need to lock here?
+  // // lets first lock it, and optimise later if needed
+  // pthread_mutex_lock(&wclist->lock);
   for (struct list_elem* e = list_begin(&wclist->lst);
        e != list_end(&wclist->lst); e = list_next(e)) {
     word_count_t* wc = list_entry(e, word_count_t, elem);
     if (strcmp(wc->word, word) == 0) {
-      pthread_mutex_unlock(&wclist->lock);
+      // pthread_mutex_unlock(&wclist->lock);
       return wc;
     }
   }
-  pthread_mutex_unlock(&wclist->lock);
+  // pthread_mutex_unlock(&wclist->lock);
   return NULL;
 }
 
@@ -76,17 +76,14 @@ word_count_t* add_word(word_count_list_t* wclist, char* word) {
 
   // ? can we use find_word to check if the word already exists
   pthread_mutex_lock(&wclist->lock);
-  for (struct list_elem* e = list_begin(&wclist->lst);
-       e != list_end(&wclist->lst); e = list_next(e)) {
-    word_count_t* wc = list_entry(e, word_count_t, elem);
-    if (strcmp(wc->word, word) == 0) {
-      wc->count++;
-      pthread_mutex_unlock(&wclist->lock);
-      // remeber to free the allocated new_wc since we didn't use it
-      free(new_wc->word);
-      free(new_wc);
-      return wc;
-    }
+  word_count_t* wc = find_word(wclist, word);
+  if (wc != NULL) {
+    wc->count++;
+    pthread_mutex_unlock(&wclist->lock);
+    // remeber to free the allocated new_wc since we didn't use it
+    free(new_wc->word);
+    free(new_wc);
+    return wc;
   }
   // if not found, create a new word_count_t
   /* // move out of lock as this can be the bottleneck
