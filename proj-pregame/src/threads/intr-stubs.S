@@ -48,7 +48,7 @@ intr_entry:
    userprog/process.c). */
 .globl intr_exit
 .func intr_exit
-intr_exit:
+intr_exit: /* ANCHOR intr_exit */
 	/* Restore caller's registers. */
 	popal
 	popl %gs
@@ -61,7 +61,7 @@ intr_exit:
 	addl $12, %esp
 
         /* Return to caller. */
-	iret
+	iret // * hardware “return-from-interrupt” that restores full CPU state and privilege level. /* cannot set a breakpoint in .S though */
 .endfunc
 
 /* Interrupt stubs.

@@ -307,7 +307,7 @@ static char** parse_options(char** argv) {
 }
 
 /* Runs the task specified in ARGV[1]. */
-static void run_task(char** argv) {
+static void run_task(char** argv) { // ANCHOR run_task
   const char* task = argv[1];
 
   printf("Executing '%s':\n", task);

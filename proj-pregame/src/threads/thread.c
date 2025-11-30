@@ -266,7 +266,7 @@ const char* thread_name(void) { return thread_current()->name; }
 /* Returns the running thread.
    This is running_thread() plus a couple of sanity checks.
    See the big comment at the top of thread.h for details. */
-struct thread* thread_current(void) {
+struct thread* thread_current(void) { // ANCHOR thread_current
   struct thread* t = running_thread();
 
   /* Make sure T is really a thread.

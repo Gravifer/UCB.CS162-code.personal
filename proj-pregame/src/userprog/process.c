@@ -50,7 +50,7 @@ void userprog_init(void) {
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
    process id, or TID_ERROR if the thread cannot be created. */
-pid_t process_execute(const char* file_name) {
+pid_t process_execute(const char* file_name) { // ANCHOR process_execute
   char* fn_copy;
   tid_t tid;
 
@@ -71,7 +71,7 @@ pid_t process_execute(const char* file_name) {
 
 /* A thread function that loads a user process and starts it
    running. */
-static void start_process(void* file_name_) {
+static void start_process(void* file_name_) { // ANCHOR start_process
   char* file_name = (char*)file_name_;
   struct thread* t = thread_current();
   struct intr_frame if_;
@@ -86,7 +86,7 @@ static void start_process(void* file_name_) {
     // Ensure that timer_interrupt() -> schedule() -> process_activate()
     // does not try to activate our uninitialized pagedir
     new_pcb->pagedir = NULL;
-    t->pcb = new_pcb;
+    t->pcb = new_pcb; // * only #ifdef USERPROG, do `struct thread` have a pcb (process control block) field
 
     // Continue initializing the PCB as normal
     t->pcb->main_thread = t;
@@ -125,7 +125,7 @@ static void start_process(void* file_name_) {
      arguments on the stack in the form of a `struct intr_frame',
      we just point the stack pointer (%esp) to our stack frame
      and jump to it. */
-  asm volatile("movl %0, %%esp; jmp intr_exit" : : "g"(&if_) : "memory");
+  asm volatile("movl %0, %%esp; jmp intr_exit" : : "g"(&if_) : "memory"); // * wtf you can step into this?
   NOT_REACHED();
 }
 
@@ -138,7 +138,7 @@ static void start_process(void* file_name_) {
 
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
-int process_wait(pid_t child_pid UNUSED) {
+int process_wait(pid_t child_pid UNUSED) { // ANCHOR process_wait
   sema_down(&temporary);
   return 0;
 }
@@ -268,7 +268,7 @@ static bool load_segment(struct file* file, off_t ofs, uint8_t* upage, uint32_t 
    Stores the executable's entry point into *EIP
    and its initial stack pointer into *ESP.
    Returns true if successful, false otherwise. */
-bool load(const char* file_name, void (**eip)(void), void** esp) {
+bool load(const char* file_name, void (**eip)(void), void** esp) { // ANCHOR load
   struct thread* t = thread_current();
   struct Elf32_Ehdr ehdr;
   struct file* file = NULL;

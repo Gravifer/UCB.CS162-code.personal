@@ -9,7 +9,7 @@ static void syscall_handler(struct intr_frame*);
 
 void syscall_init(void) { intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall"); }
 
-static void syscall_handler(struct intr_frame* f UNUSED) {
+static void syscall_handler(struct intr_frame* f UNUSED) { // # ANCHOR userprog/syscall_handler
   uint32_t* args = ((uint32_t*)f->esp);
 
   /*
