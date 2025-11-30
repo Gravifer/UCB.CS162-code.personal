@@ -52,13 +52,11 @@ word_count_t* find_word(word_count_list_t* wclist, char* word) {
 
 word_count_t* add_word(word_count_list_t* wclist, char* word) {
   /* DONE */
-  for (struct list_elem* e = list_begin(wclist);
-        e != list_end(wclist); e = list_next(e)) {
-    word_count_t* wc = list_entry(e, word_count_t, elem);
-    if (strcmp(wc->word, word) == 0) {
-      wc->count++;
-      return wc;
-    }
+  // use find_word to check if the word already exists
+  word_count_t* wc = find_word(wclist, word);
+  if (wc != NULL) {
+    wc->count++;
+    return wc;
   }
   // if not found, create a new word_count_t
   word_count_t* new_wc = malloc(sizeof(word_count_t));

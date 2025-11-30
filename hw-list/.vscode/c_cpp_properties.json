@@ -6,7 +6,8 @@
                 "${workspaceFolder}/**"
             ],
             "defines": [
-                "PINTOS_LIST"
+                "PINTOS_LIST",
+                "PTHREADS"
             ],
             "compilerPath": "/usr/bin/clang",
             "cStandard": "gnu99",
