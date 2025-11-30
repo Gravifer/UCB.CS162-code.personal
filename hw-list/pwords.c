@@ -32,7 +32,8 @@
 #include "word_count.h"
 #include "word_helpers.h"
 
-const bool FLAG_PTHREADS = true;
+const bool  FLAG_PTHREADS = true;
+const u_int MAX_THREADS = -1;
 
 /*
  * main - handle command line, spawning one thread per file.
@@ -47,32 +48,49 @@ int main(int argc, char* argv[]) {
     count_words(&word_counts, stdin);
   } else if (FLAG_PTHREADS) {
     /* DONE */
-    int num_files = argc - 1;
-    // // pthread_t threads[num_files]; // ! let's not use VLA
-    pthread_t* threads = malloc(sizeof(pthread_t) * num_files);
-    struct thread_args {
-      int threadid;
+    struct idx_lock {
+      int pos;
+      pthread_mutex_t lock;
+    } idx = { .pos = 0, .lock = PTHREAD_MUTEX_INITIALIZER };
+    struct thread_args { // ANCHOR[id=pwords-main-thread_args]
+      int num_files;
+      char** filenames;
+      struct idx_lock* idx;
       word_count_list_t* wclist;
-      char* filename;
+      int tid;
     };
-    void* threadfun(void* arg);
+    int num_files = argc - 1;
+    int num_threads = ((u_int)num_files < MAX_THREADS) ? num_files : MAX_THREADS;
+    // // pthread_t threads[num_files]; // ! let's not use VLA
+    // pthread_t* threads = malloc(sizeof(pthread_t) * num_files);
+    pthread_t* threads = malloc(sizeof(pthread_t) * num_threads); void* worker(void* arg); // capped thread pool
+    if (threads == NULL) {
+      fprintf(stderr, "Error allocating memory for threads\n");
+      return 1;
+    }
+
     struct thread_args* targs = malloc(sizeof(struct thread_args) * num_files);
-    for (int i = 0; i < num_files; i++) {
+    if (targs == NULL) {
+      fprintf(stderr, "Error allocating memory for thread args\n");
+      free(threads);
+      return 1;
+    }
+    for (int i = 0; i < num_threads; i++) {
       targs[i] = (struct thread_args){
-        .threadid = i + 1, // let main thread be thread 0
-        .wclist   = &word_counts,
-        .filename = argv[i + 1]
+        .num_files = num_files,
+        .filenames = &argv[1],
+        .idx    = &idx,
+        .wclist = &word_counts,
+        .tid    = i + 1, // let main thread be thread 0
       };
-      // fprintf(stderr, "Main: creating thread %d for file %s\n", 
-      //         targs[i].threadid, targs[i].filename);
-      int rc = pthread_create(&threads[i], NULL, threadfun, &targs[i]);
+      int rc = pthread_create(&threads[i], NULL, worker, &targs[i]);
       if (rc != 0) {
-        fprintf(stderr, "Error creating thread for file %s\n", argv[i + 1]);
+        fprintf(stderr, "Error creating thread %d (of %d)\n", i, num_threads);
         free(threads);
         return 1;
       }
     }
-    for (int i = 0; i < num_files; i++) {
+    for (int i = 0; i < num_threads; i++) {
       pthread_join(threads[i], NULL);
     }
   } else { // for debugging
@@ -94,21 +112,43 @@ int main(int argc, char* argv[]) {
   return 0;
 }
 
-void* threadfun(void* arg) {
-  struct thread_args {
-    int threadid;
-    word_count_list_t* wclist;
-    char* filename;
+void* worker(void* arg) {
+  struct idx_lock {
+    int pos;
+    pthread_mutex_t lock;
   };
-  struct thread_args* targs = (struct thread_args*)arg;
-  // * we need to open the file here
-  FILE* infile = fopen(targs->filename, "r");
-  if (infile == NULL) {
-    fprintf(stderr, "(thread %d) Could not open input file %s\n", 
-            targs->threadid, targs->filename);
-    pthread_exit(NULL);
+  struct thread_args { // LINK pwords.c#pwords-main-thread_args
+    int num_files;
+    char** filenames;
+    struct idx_lock* idx;
+    word_count_list_t* wclist;
+    int tid;
+  } *t = arg;
+  pthread_mutex_t *ilk = &t->idx->lock;
+
+  while (1) {
+    char* filename;
+
+    pthread_mutex_lock(ilk);
+    if (t->idx->pos >= t->num_files) {
+      pthread_mutex_unlock(ilk);
+      break;
+    }
+    filename = t->filenames[t->idx->pos];
+    // fprintf(stderr, "(thread %d) Processing file[%d] %s\n", t->tid, t->idx->pos, filename);
+    t->idx->pos++;
+    pthread_mutex_unlock(ilk);
+
+    FILE* infile = fopen(filename, "r");
+    if (!infile) {
+      fprintf(stderr, "(thread %d) Could not open input file %s\n",
+              t->tid, filename);
+      continue;
+    }
+
+    count_words(t->wclist, infile);
+    fclose(infile);
   }
-  count_words(targs->wclist, infile);
-  fclose(infile);
+
   pthread_exit(NULL);
 }
