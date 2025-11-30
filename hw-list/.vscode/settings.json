@@ -1,0 +1,14 @@
+{
+    "files.readonlyInclude": {
+        "list.c": true,
+        "list.h": true,
+        "pthread.c": true,
+        "word_count.h": true,
+        "word_helpers.h": true
+    },
+    "C_Cpp.clang_format_fallbackStyle": "GNU",
+    "git.repositoryScanIgnoredFolders": [
+        "node_modules",
+        "**/btke.pintos"
+    ]
+}
