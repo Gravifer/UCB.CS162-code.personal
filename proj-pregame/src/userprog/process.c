@@ -472,9 +472,31 @@ static bool setup_stack(void** esp) {
   kpage = palloc_get_page(PAL_USER | PAL_ZERO);
   if (kpage != NULL) {
     success = install_page(((uint8_t*)PHYS_BASE) - PGSIZE, kpage, true);
-    if (success)
-      *esp = (void*)(((uintptr_t)PHYS_BASE - 8) & 0xFFFFFFF0);
-    else
+    if (success) {
+      uintptr_t sp = ((uintptr_t)PHYS_BASE) & ~(uintptr_t)0xF;
+
+      // TODO: Push argv[0] (filename)
+      sp -= sizeof(char**);
+      *(char**)sp = NULL; // cannot get it without changing the signature of `setup_stack`
+
+      // Push sentinel of argv
+      sp -= sizeof(char**);
+      *(uint32_t*)sp = (uint32_t) 0;
+
+      // Push dummy argv pointer (just a null pointer)
+      sp -= sizeof(char**);
+      *(char**)sp = sp + 2 * sizeof(char**);
+
+      // Push argc = 1
+      sp -= sizeof(int);
+      *(int*)sp = 1;
+
+      // Push dummy return addr
+      sp -= sizeof(void*);
+      *(void**)sp = NULL;
+
+      *esp = (void*)(sp);
+    } else
       palloc_free_page(kpage);
   }
   return success;
