@@ -473,7 +473,7 @@ static bool setup_stack(void** esp) {
   if (kpage != NULL) {
     success = install_page(((uint8_t*)PHYS_BASE) - PGSIZE, kpage, true);
     if (success)
-      *esp = PHYS_BASE;
+      *esp = (void*)(((uintptr_t)PHYS_BASE - 8) & 0xFFFFFFF0);
     else
       palloc_free_page(kpage);
   }
